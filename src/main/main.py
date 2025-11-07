@@ -139,7 +139,6 @@ def main():
         logger.info("Starting chatbot server...")
         if Config.DEBUG:
             # For reload, run uvicorn with import string
-            import sys
             import os
 
             # Add project root to path

@@ -27,6 +27,3 @@ long_query_time = 2
 skip-name-resolve
 
 # Performance
-query_cache_size = 64M
-query_cache_type = 1
-query_cache_limit = 8M

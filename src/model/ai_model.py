@@ -224,6 +224,7 @@ class MockAIModel(AIModel):
                     date_obj = datetime.strptime(date_str, "%Y-%m-%d")
                     date_display = date_obj.strftime("%A, %B %d, %Y")
                 except ValueError:
+                    # If the date string is invalid, fall back to the default date display.
                     pass
 
             return f"""Certainly! I can help you with appointment slots. Based on my database, here are the available times:

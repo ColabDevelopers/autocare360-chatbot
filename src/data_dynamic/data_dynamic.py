@@ -4,7 +4,7 @@ Database operations for dynamic data retrieval.
 import mysql.connector
 from mysql.connector import Error
 import logging
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, cast
 from contextlib import contextmanager
 from datetime import datetime, timedelta
 
@@ -57,7 +57,7 @@ class DatabaseManager:
             with self.get_connection() as connection:
                 cursor = connection.cursor(dictionary=True)
                 cursor.execute(query, (limit,))
-                records = cursor.fetchall()
+                records = cast(List[Dict[str, Any]], cursor.fetchall())
 
                 if not records:
                     return "No recent service records found."
@@ -99,7 +99,7 @@ class DatabaseManager:
             with self.get_connection() as connection:
                 cursor = connection.cursor(dictionary=True)
                 cursor.execute(query, (vehicle_id,))
-                records = cursor.fetchall()
+                records = cast(List[Dict[str, Any]], cursor.fetchall())
 
                 if not records:
                     return f"No service history found for vehicle {vehicle_id}."
@@ -140,7 +140,7 @@ class DatabaseManager:
             with self.get_connection() as connection:
                 cursor = connection.cursor(dictionary=True)
                 cursor.execute(query, (f"%{service_type}%",))
-                records = cursor.fetchall()
+                records = cast(List[Dict[str, Any]], cursor.fetchall())
 
                 if not records:
                     return f"No services found matching '{service_type}'."
@@ -217,7 +217,7 @@ class DatabaseManager:
             with self.get_connection() as connection:
                 cursor = connection.cursor(dictionary=True)
                 cursor.execute(query, (date,))
-                booked_slots = cursor.fetchall()
+                booked_slots = cast(List[Dict[str, Any]], cursor.fetchall())
 
                 # Create a set of booked time slots
                 booked_times = set()
@@ -300,7 +300,7 @@ class DatabaseManager:
             with self.get_connection() as connection:
                 cursor = connection.cursor(dictionary=True)
                 cursor.execute(query, params)
-                result = cursor.fetchone()
+                result = cast(Dict[str, Any], cursor.fetchone())
                 return result["count"] == 0
         except Error as e:
             logger.error(f"Error checking appointment availability: {e}")
@@ -328,7 +328,7 @@ class DatabaseManager:
             with self.get_connection() as connection:
                 cursor = connection.cursor(dictionary=True)
                 cursor.execute(query, (limit,))
-                appointments = cursor.fetchall()
+                appointments = cast(List[Dict[str, Any]], cursor.fetchall())
 
                 if not appointments:
                     return "No upcoming appointments found."

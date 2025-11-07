@@ -1,10 +1,8 @@
 """
 Data loader for static content (text files, PDFs, etc.)
 """
-import os
 import json
 import logging
-from typing import List, Dict, Any
 from pathlib import Path
 
 logger = logging.getLogger(__name__)

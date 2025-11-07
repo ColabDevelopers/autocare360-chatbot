@@ -2,6 +2,7 @@
 Chat service that combines data loading, database queries, and AI generation.
 """
 import logging
+import re
 from typing import Optional, Dict, Any, List
 from datetime import datetime, timedelta
 from data_static import DataLoader
@@ -81,7 +82,7 @@ class ChatService:
 
         except Exception as e:
             logger.error(f"Error processing message: {e}")
-            return f"Sorry, I encountered an error: {str(e)}"
+            return "Sorry, I encountered an error while processing your request."
 
     def _get_static_context(self) -> str:
         """
@@ -126,8 +127,6 @@ class ChatService:
             word in message_lower
             for word in ["vehicle", "car", "history", "service record"]
         ):
-            import re
-
             # Look for vehicle ID patterns
             vehicle_id_match = re.search(r"\b([A-Z]{2,6}\d{3,6})\b", message)
             if vehicle_id_match:
@@ -170,9 +169,6 @@ class ChatService:
         Returns:
             Date string in YYYY-MM-DD format or None
         """
-        import re
-        from datetime import datetime, timedelta
-
         # Check for relative dates
         if "today" in message_lower:
             return datetime.now().strftime("%Y-%m-%d")
