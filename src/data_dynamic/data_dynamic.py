@@ -38,18 +38,20 @@ class DatabaseManager:
 
     def get_recent_service_records(self, limit: int = 5) -> str:
         """
-        Retrieve recent service records from database.
+        Retrieve recent appointments from database.
 
         Args:
             limit: Maximum number of records to retrieve
 
         Returns:
-            str: Formatted service records
+            str: Formatted appointment records
         """
         query = """
-        SELECT id, vehicle_id, service_type, service_date, description
-        FROM service_records
-        ORDER BY service_date DESC
+        SELECT a.id, a.service, a.vehicle, a.date, a.time, a.status, a.notes,
+               u.name as customer_name, u.email as customer_email
+        FROM appointments a
+        LEFT JOIN users u ON a.user_id = u.id
+        ORDER BY a.date DESC, a.time DESC
         LIMIT %s
         """
 
@@ -60,57 +62,61 @@ class DatabaseManager:
                 records = cast(List[Dict[str, Any]], cursor.fetchall())
 
                 if not records:
-                    return "No recent service records found."
+                    return "No recent appointments found."
 
                 formatted_records = []
                 for record in records:
                     formatted_records.append(
-                        f"Service ID: {record['id']}\n"
-                        f"Vehicle: {record['vehicle_id']}\n"
-                        f"Type: {record['service_type']}\n"
-                        f"Date: {record['service_date']}\n"
-                        f"Description: {record['description']}\n"
+                        f"Appointment ID: {record['id']}\n"
+                        f"Customer: {record.get('customer_name', 'N/A')} ({record.get('customer_email', 'N/A')})\n"
+                        f"Service: {record['service']}\n"
+                        f"Vehicle: {record['vehicle']}\n"
+                        f"Date: {record['date']} at {record['time']}\n"
+                        f"Status: {record['status']}\n"
+                        f"Notes: {record.get('notes', 'N/A')}\n"
                     )
 
-                return "Recent Service Records:\n" + "\n".join(formatted_records)
+                return "Recent Appointments:\n" + "\n".join(formatted_records)
 
         except Error as e:
             logger.error(f"Error retrieving service records: {e}")
-            return f"Error retrieving service records: {str(e)}"
+            return f"Error retrieving appointments: {str(e)}"
 
     def get_vehicle_history(self, vehicle_id: str) -> str:
         """
-        Get service history for a specific vehicle.
+        Get appointment history for a specific vehicle.
 
         Args:
             vehicle_id: The vehicle identifier
 
         Returns:
-            str: Formatted vehicle service history
+            str: Formatted vehicle appointment history
         """
         query = """
-        SELECT id, service_type, service_date, description
-        FROM service_records
-        WHERE vehicle_id = %s
-        ORDER BY service_date DESC
+        SELECT a.id, a.service, a.date, a.time, a.status, a.notes,
+               u.name as customer_name
+        FROM appointments a
+        LEFT JOIN users u ON a.user_id = u.id
+        WHERE a.vehicle LIKE %s
+        ORDER BY a.date DESC, a.time DESC
         """
 
         try:
             with self.get_connection() as connection:
                 cursor = connection.cursor(dictionary=True)
-                cursor.execute(query, (vehicle_id,))
+                cursor.execute(query, (f"%{vehicle_id}%",))
                 records = cast(List[Dict[str, Any]], cursor.fetchall())
 
                 if not records:
-                    return f"No service history found for vehicle {vehicle_id}."
+                    return f"No appointment history found for vehicle {vehicle_id}."
 
                 formatted_records = []
                 for record in records:
                     formatted_records.append(
-                        f"Date: {record['service_date']} - {record['service_type']}: {record['description']}"
+                        f"Date: {record['date']} at {record['time']} - {record['service']} ({record['status']})"
                     )
 
-                return f"Service History for Vehicle {vehicle_id}:\n" + "\n".join(
+                return f"Appointment History for Vehicle {vehicle_id}:\n" + "\n".join(
                     formatted_records
                 )
 
@@ -120,7 +126,7 @@ class DatabaseManager:
 
     def search_services_by_type(self, service_type: str) -> str:
         """
-        Search for services by type.
+        Search for appointments by service type.
 
         Args:
             service_type: Type of service to search for
@@ -129,10 +135,12 @@ class DatabaseManager:
             str: Formatted search results
         """
         query = """
-        SELECT id, vehicle_id, service_date, description
-        FROM service_records
-        WHERE service_type LIKE %s
-        ORDER BY service_date DESC
+        SELECT a.id, a.vehicle, a.date, a.time, a.status, a.notes,
+               u.name as customer_name
+        FROM appointments a
+        LEFT JOIN users u ON a.user_id = u.id
+        WHERE a.service LIKE %s
+        ORDER BY a.date DESC, a.time DESC
         LIMIT 10
         """
 
@@ -148,10 +156,10 @@ class DatabaseManager:
                 formatted_records = []
                 for record in records:
                     formatted_records.append(
-                        f"Vehicle {record['vehicle_id']} - {record['service_date']}: {record['description']}"
+                        f"{record.get('customer_name', 'N/A')} - {record['vehicle']} on {record['date']} at {record['time']} ({record['status']})"
                     )
 
-                return f"Services matching '{service_type}':\n" + "\n".join(
+                return f"Appointments matching '{service_type}':\n" + "\n".join(
                     formatted_records
                 )
 
@@ -188,29 +196,22 @@ class DatabaseManager:
         except ValueError:
             return f"Invalid date format: {date}"
 
-        # Define working hours (9 AM to 5 PM, Monday-Friday)
+        # Define working hours (9 AM to 5 PM, Monday-Friday) - 1 hour slots
         working_hours = [
-            ("09:00", "09:30"),
-            ("09:30", "10:00"),
-            ("10:00", "10:30"),
-            ("10:30", "11:00"),
-            ("11:00", "11:30"),
-            ("11:30", "12:00"),
-            ("13:00", "13:30"),
-            ("13:30", "14:00"),
-            ("14:00", "14:30"),
-            ("14:30", "15:00"),
-            ("15:00", "15:30"),
-            ("15:30", "16:00"),
-            ("16:00", "16:30"),
-            ("16:30", "17:00"),
+            ("09:00", "10:00"),
+            ("10:00", "11:00"),
+            ("11:00", "12:00"),
+            ("13:00", "14:00"),
+            ("14:00", "15:00"),
+            ("15:00", "16:00"),
+            ("16:00", "17:00"),
         ]
 
         query = """
-        SELECT appointment_time, duration_minutes, technician
+        SELECT time, status, technician
         FROM appointments
-        WHERE appointment_date = %s AND status IN ('scheduled', 'confirmed')
-        ORDER BY appointment_time
+        WHERE date = %s AND status IN ('PENDING', 'APPROVED', 'CONFIRMED', 'IN_PROGRESS')
+        ORDER BY time
         """
 
         try:
@@ -219,12 +220,10 @@ class DatabaseManager:
                 cursor.execute(query, (date,))
                 booked_slots = cast(List[Dict[str, Any]], cursor.fetchall())
 
-                # Create a set of booked time slots
+                # Create a set of booked time slots (assuming 1 hour appointments)
                 booked_times = set()
                 for slot in booked_slots:
-                    start_time = slot["appointment_time"]
-                    duration = slot["duration_minutes"]
-                    # Mark time slots as booked based on duration
+                    start_time = slot["time"]
                     # Handle both datetime and timedelta types
                     if isinstance(start_time, timedelta):
                         # Convert timedelta to time string (HH:MM)
@@ -240,7 +239,7 @@ class DatabaseManager:
                 available_slots = []
                 for start, end in working_hours:
                     if start not in booked_times:
-                        available_slots.append(f"{start}-{end}")
+                        available_slots.append(f"{start} - {end}")
 
                 if not available_slots:
                     today = datetime.now().strftime("%Y-%m-%d")
