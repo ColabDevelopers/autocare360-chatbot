@@ -1,7 +1,7 @@
 -- Autocare Database Initialization Script
 -- This script creates the database schema and populates it with sample data
 
-USE autocare_db;
+USE autocare360;
 
 -- Drop tables if they exist to ensure clean setup
 DROP TABLE IF EXISTS appointments;

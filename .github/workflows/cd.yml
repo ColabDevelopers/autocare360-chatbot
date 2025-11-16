@@ -1,0 +1,47 @@
+name: Continuous Deployment
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  trigger-infrastructure-deployment:
+    name: Trigger Infrastructure Deployment
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        
+      - name: Trigger infrastructure deployment
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.INFRASTRUCTURE_PAT }}
+          script: |
+            const result = await github.rest.actions.createWorkflowDispatch({
+              owner: 'ColabDevelopers',
+              repo: 'autocare360-infrastructure',
+              workflow_id: 'deploy.yml',
+              ref: 'main',
+              inputs: {
+                triggered_by: 'chatbot',
+                commit_sha: context.sha,
+                commit_message: context.payload.head_commit?.message || 'Manual trigger'
+              }
+            });
+            
+            console.log('Infrastructure deployment triggered successfully');
+            console.log(`Triggered by chatbot commit: ${context.sha}`);
+            
+      - name: Create deployment notification
+        run: |
+          echo "### Deployment Triggered 🚀" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Repository:** Chatbot (autocare360-chatbot)" >> $GITHUB_STEP_SUMMARY
+          echo "**Branch:** ${{ github.ref_name }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Commit:** ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Infrastructure deployment has been triggered." >> $GITHUB_STEP_SUMMARY
+          echo "Check the [infrastructure repository](https://github.com/ColabDevelopers/autocare360-infrastructure/actions) for deployment progress." >> $GITHUB_STEP_SUMMARY
