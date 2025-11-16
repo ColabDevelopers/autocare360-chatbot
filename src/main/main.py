@@ -39,6 +39,7 @@ def create_app():
     from fastapi.responses import HTMLResponse
     from fastapi.templating import Jinja2Templates
     from fastapi.staticfiles import StaticFiles
+    from fastapi.middleware.cors import CORSMiddleware
 
     # Validate configuration
     missing_config = Config.validate()
@@ -85,6 +86,18 @@ def create_app():
         title="Autocare AI Chatbot",
         description="RAG-powered chatbot for automotive maintenance",
         version="2.0.0",
+    )
+
+    # Configure CORS for frontend integration
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=[
+            "http://localhost:3000",  # Next.js frontend
+            "http://127.0.0.1:3000",
+        ],
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
     )
 
     # Mount static files
